@@ -78,8 +78,21 @@ header.site-header {
 }
 
 .nav .brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   font-weight: 700;
   letter-spacing: 0.01em;
+}
+/* Always visible, not conditional on scroll position: the header itself
+   is position: sticky (see header.site-header below), so this photo and
+   name are genuinely frozen in place at the top of the viewport from the
+   moment you start scrolling, not something that fades in and out. */
+.brand-photo {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .nav ul {
@@ -93,9 +106,64 @@ header.site-header {
 
 .nav a { color: var(--text-muted); font-size: 0.92rem; }
 .nav a:hover { color: var(--accent); }
+.nav a.active { color: var(--accent); font-weight: 600; }
+
+/* Jumping to a section from the nav still needs this even without
+   scroll-snap, otherwise the sticky header lands on top of whatever
+   section a hash link just jumped to. */
+section { scroll-margin-top: 60px; }
 
 section { padding: 56px 0; }
-section + section { border-top: 1px solid var(--border); }
+
+/* Each non-hero section is its own card: a surface-colored panel with a
+   border, shadow, and margin above and below, rather than a full-bleed
+   band of content separated only by a hairline. This is
+   `main > section.wrap` rather than just `.wrap`, on purpose: `.wrap`
+   alone (used elsewhere, including inside the header) sets `padding: 0
+   24px`, which has higher specificity than the plain `section { padding:
+   56px 0 }` rule above and was silently zeroing out top/bottom padding
+   on every section, `main > section.wrap` is specific enough to win over
+   `.wrap` and restore real padding, now sized for a card's interior
+   rather than a full-bleed band. */
+main > section.wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  margin: 24px auto;
+  padding: 44px 40px;
+}
+
+/* Sections fade and rise gently into place the first time they cross
+   into view (setupScrollReveal in app.js), a plain, smooth entrance with
+   no tilt or snap to it, matching a continuous scroll rather than
+   something that jumps or flips. The class is only ever added when
+   motion is allowed, so there is no separate reduced-motion override
+   needed here, a visitor with that preference never gets the starting
+   opacity: 0 state in the first place. */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Individual cards, timeline entries, and credential cards fade in with
+   a small stagger (transition-delay set per item in JS) on top of their
+   parent section's own fade above, so a section's contents settle in as
+   a gentle wave rather than one flat block appearing all at once. */
+.reveal-item {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+.reveal-item.is-visible {
+  opacity: 1;
+  transform: none;
+}
 
 .hero {
   padding-top: 76px;
@@ -132,16 +200,26 @@ section + section { border-top: 1px solid var(--border); }
   .links { justify-content: center; }
 }
 
+.hero .kicker {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 10px;
+}
 .hero h1 {
   font-size: clamp(1.9rem, 4vw, 2.6rem);
   margin: 0 0 8px;
   letter-spacing: -0.01em;
 }
-.hero .role {
-  color: var(--accent);
-  font-weight: 600;
+.hero .tagline {
+  color: var(--text-muted);
+  font-style: italic;
   font-size: 1.05rem;
   margin: 0 0 4px;
+  max-width: 56ch;
 }
 .hero .location {
   color: var(--text-muted);
@@ -153,6 +231,8 @@ section + section { border-top: 1px solid var(--border); }
   color: var(--text-muted);
   font-size: 1.02rem;
 }
+.hero .bio p { margin: 0 0 14px; }
+.hero .bio p:last-child { margin-bottom: 0; }
 
 .hero-photo-img,
 .hero-photo-fallback {
@@ -198,9 +278,20 @@ section + section { border-top: 1px solid var(--border); }
   filter: brightness(1.08);
 }
 
+.eyebrow {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 8px;
+  padding-left: 16px;
+}
+
 h2.section-title {
   font-size: 1.4rem;
-  margin: 0 0 24px;
+  margin: 0 0 12px;
   letter-spacing: -0.005em;
   position: relative;
   padding-left: 16px;
@@ -214,6 +305,13 @@ h2.section-title::before {
   width: 4px;
   border-radius: 999px;
   background: var(--accent);
+}
+
+.section-intro {
+  color: var(--text-muted);
+  max-width: 62ch;
+  margin: 0 0 28px;
+  padding-left: 16px;
 }
 
 .card-grid {
@@ -244,14 +342,6 @@ h2.section-title::before {
 }
 .card a { font-size: 0.86rem; font-weight: 600; }
 
-.impact-list {
-  margin: 0;
-  padding-left: 1.1em;
-  color: var(--text-muted);
-}
-.impact-list li { margin-bottom: 12px; }
-.impact-list li::marker { color: var(--accent); }
-
 .timeline { border-left: 2px solid var(--border); padding-left: 22px; }
 .timeline-item { position: relative; margin-bottom: 26px; }
 .timeline-item::before {
@@ -266,6 +356,38 @@ h2.section-title::before {
 }
 .timeline-item .role { font-weight: 600; margin: 0; }
 .timeline-item .meta { color: var(--text-muted); font-size: 0.88rem; margin: 2px 0 0; }
+.timeline-item .note { color: var(--text-muted); font-size: 0.88rem; margin: 6px 0 0; }
+
+/*
+  Selected Work renders as a carousel of short text cards (setupCarousel in
+  app.js), rather than a full-width list, so it can be skimmed in a few
+  seconds of horizontal scroll instead of a long vertical read.
+*/
+.feature-card {
+  flex: 0 0 auto;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 20px 22px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.feature-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+.feature-card .feature-number {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+.feature-card h3 { margin: 0 0 10px; font-size: 1rem; }
+.feature-card p { margin: 0 0 8px; color: var(--text-muted); font-size: 0.88rem; }
+.feature-card p:last-of-type { margin-bottom: 0; }
 
 .subsection-title {
   font-size: 1rem;
@@ -315,46 +437,66 @@ h2.section-title::before {
 }
 
 /*
-  Publications and Media Coverage render as a slow, seamless, auto-scrolling
-  carousel (setupCarousel in app.js). The track is duplicated content, so
-  translating it exactly -50% loops with no visible seam. Hovering, tabbing
-  a link into focus, or touching a card pauses it; prefers-reduced-motion
-  turns it into a plain swipeable row with no motion at all.
+  Publications, Selected Work, and Media/Events all render as a
+  slow, auto-scrolling carousel (setupCarousel in app.js), using real
+  horizontal scrolling (carousel.scrollLeft), not a CSS transform, so a
+  visitor can always take over with a trackpad, touch swipe, or the arrow
+  buttons below, at any time, not just by pausing the motion. The track is
+  duplicated content, so scrolling exactly past the first copy's width and
+  resetting scrollLeft back by that width loops with no visible seam.
+  Hovering, tabbing a link into focus, touching, or manually scrolling
+  pauses the automatic advance; prefers-reduced-motion turns it into a
+  plain scrollable row with no automatic motion at all.
 */
+/* Never scrolled itself, only positioned: the arrow buttons anchor to this,
+   not to .carousel, so they stay fixed at the visual edges instead of
+   scrolling away with the track (see addCarouselArrows in app.js). */
+.carousel-wrap { position: relative; }
+
 .carousel {
-  position: relative;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   padding: 4px 0;
+  scrollbar-width: none;
   -webkit-mask-image: linear-gradient(90deg, transparent, black 20px, black calc(100% - 20px), transparent);
   mask-image: linear-gradient(90deg, transparent, black 20px, black calc(100% - 20px), transparent);
 }
+.carousel::-webkit-scrollbar { display: none; }
 .carousel-track {
   display: flex;
   gap: 18px;
   width: max-content;
 }
-.carousel-animated .carousel-track {
-  animation: marquee var(--marquee-duration, 40s) linear infinite;
+
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  font-size: 1.15rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
 }
-.carousel-track.paused { animation-play-state: paused; }
-@keyframes marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-/* No JS, reduced motion requested, or too few items to loop: an ordinary,
-   swipeable row instead of an animated one. */
-.carousel:not(.carousel-animated) {
-  overflow-x: auto;
-  -webkit-mask-image: none;
-  mask-image: none;
-}
+.carousel-arrow:hover { box-shadow: var(--shadow-hover); color: var(--accent); }
+.carousel-arrow-prev { left: 6px; }
+.carousel-arrow-next { right: 6px; }
 
 /*
   Same mechanism, sized for a row of badges contained inside a card (used by
   Affiliations and Certifications) rather than a full-bleed row of large
   thumbnail cards. No breakout padding, since it already sits inside the
   card's own padding; a narrower edge fade and tighter gap to match the
-  smaller items.
+  smaller items, and smaller arrow buttons to match.
 */
 .carousel-compact {
   padding: 2px 0;
@@ -362,6 +504,7 @@ h2.section-title::before {
   mask-image: linear-gradient(90deg, transparent, black 14px, black calc(100% - 14px), transparent);
 }
 .carousel-compact .carousel-track { gap: 8px; }
+.carousel-compact .carousel-arrow { width: 24px; height: 24px; font-size: 0.9rem; }
 
 .pub-item {
   flex: 0 0 auto;
@@ -383,6 +526,12 @@ h2.section-title::before {
   object-fit: cover;
   display: block;
   background: var(--accent-soft);
+}
+/* Media/Events images tend to be announcement graphics and badges, taller
+   than a blog post's landscape cover image, so they get their own aspect
+   ratio rather than forcing the same 16:10 crop used for Publications. */
+#media-list .pub-thumb {
+  aspect-ratio: 3 / 4;
 }
 
 .pub-body { padding: 16px 18px; flex: 1; }
